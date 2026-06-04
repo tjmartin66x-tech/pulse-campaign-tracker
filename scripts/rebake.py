@@ -39,28 +39,30 @@ DIM_FIELDS = [  # (signal_activity key, lead-record field)
 ]
 
 # ----------------------------------------------------------------------------- HTTP
-def _api(path, params=None):
+def _api(path, params=None, method="GET", body=None):
     key = os.environ.get("INSTANTLY_API_KEY", "")
     if not key:
         sys.exit("ERROR: INSTANTLY_API_KEY not set")
     url = BASE + path + (("?" + urlencode(params)) if params else "")
-    req = Request(url, headers={"Authorization": key, "Content-Type": "application/json"})
+    data = json.dumps(body).encode() if body is not None else None
+    req = Request(url, data=data, method=method,
+                  headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
     with urlopen(req, timeout=45) as r:
         return json.loads(r.read())
 
 def fetch_analytics():
-    a = _api("/campaigns/analytics")
+    a = _api("/campaigns/analytics")           # GET
     return a if isinstance(a, list) else []
 
 def fetch_all_leads():
-    """Page through every lead in the workspace."""
+    """Page through every lead in the workspace. /leads/list is a POST in v2."""
     out, cursor = [], None
     while True:
-        params = {"limit": 100}
+        body = {"limit": 100}
         if cursor:
-            params["starting_after"] = cursor
-        page = _api("/leads/list", params)
-        items = page.get("items", page) if isinstance(page, dict) else page
+            body["starting_after"] = cursor
+        page = _api("/leads/list", method="POST", body=body)
+        items = page.get("items", []) if isinstance(page, dict) else (page or [])
         out.extend(items)
         cursor = (page.get("next_starting_after")
                   or (page.get("pagination") or {}).get("next_starting_after")) if isinstance(page, dict) else None
