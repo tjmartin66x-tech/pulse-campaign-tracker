@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:                # never let two rebakes race on main
   group: dashboard-rebake
@@ -44,3 +45,34 @@ jobs:
           git add index.html
           git commit -m "${{ steps.rebake.outputs.msg }}"
           git push origin main
+
+      - name: Open/append a failure issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "⚠️ Dashboard rebake workflow is failing";
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `The scheduled **Dashboard rebake** failed.`,
+              ``,
+              `- Run: ${run}`,
+              `- Commit: \`${context.sha}\``,
+              `- When: ${new Date().toISOString()}`,
+              ``,
+              `Check the failed step's log (the script prints \`API_ERROR <code> ...\` with the upstream message). ` +
+              `\`index.html\` is left untouched on failure. Close this issue once it's green again.`,
+            ].join("\n");
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: "open", per_page: 100,
+            });
+            const existing = issues.find(i => i.title === title && !i.pull_request);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo, title, body,
+              });
+            }
