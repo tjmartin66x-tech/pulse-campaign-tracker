@@ -72,7 +72,8 @@ def short_name(camp_name):
     return camp_name.replace("FP_S1_", "").replace("_", " ")
 
 def norm_tier(raw):
-    t = (raw or "").strip().upper()
+    # underscores -> spaces so "PASS_TIER_2" matches the "PASS TIER 3" house style
+    t = (raw or "").strip().upper().replace("_", " ")
     return {"T1": "TIER 1", "T2": "TIER 2", "T3": "TIER 3"}.get(t, t) or "TIER 1"
 
 def norm_band(raw):
