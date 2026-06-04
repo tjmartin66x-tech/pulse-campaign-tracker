@@ -40,15 +40,20 @@ DIM_FIELDS = [  # (signal_activity key, lead-record field)
 
 # ----------------------------------------------------------------------------- HTTP
 def _api(path, params=None, method="GET", body=None):
-    key = os.environ.get("INSTANTLY_API_KEY", "")
+    key = os.environ.get("INSTANTLY_API_KEY", "").strip()   # strip paste artifacts
     if not key:
         sys.exit("ERROR: INSTANTLY_API_KEY not set")
     url = BASE + path + (("?" + urlencode(params)) if params else "")
     data = json.dumps(body).encode() if body is not None else None
     req = Request(url, data=data, method=method,
                   headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    with urlopen(req, timeout=45) as r:
-        return json.loads(r.read())
+    try:
+        with urlopen(req, timeout=45) as r:
+            return json.loads(r.read())
+    except HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:400]
+        print(f"API_ERROR {e.code} {method} {path}: {detail}", file=sys.stderr)
+        raise
 
 def fetch_analytics():
     a = _api("/campaigns/analytics")           # GET
