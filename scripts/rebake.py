@@ -46,7 +46,12 @@ def _api(path, params=None, method="GET", body=None):
     url = BASE + path + (("?" + urlencode(params)) if params else "")
     data = json.dumps(body).encode() if body is not None else None
     req = Request(url, data=data, method=method,
-                  headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+                  headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                           # Instantly is behind Cloudflare; the default Python-urllib UA trips
+                           # CF bot protection (error 1010). A browser UA passes.
+                           "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                                         "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                           "Accept": "application/json"})
     try:
         with urlopen(req, timeout=45) as r:
             return json.loads(r.read())
