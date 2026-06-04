@@ -4,10 +4,14 @@ on:
   schedule:
     # Every 30 min, Mon–Fri, 11:00–21:00 UTC (07:00–17:00 ET)
     - cron: "0,30 11-21 * * 1-5"
-  workflow_dispatch:        # allow manual trigger from GitHub Actions UI
+  workflow_dispatch:        # allow manual trigger from the Actions UI
 
 permissions:
   contents: write
+
+concurrency:                # never let two rebakes race on main
+  group: dashboard-rebake
+  cancel-in-progress: false
 
 jobs:
   rebake:
@@ -17,17 +21,24 @@ jobs:
         with:
           ref: main
 
-      - name: Run rebake script
+      - name: Self-test rebuild logic (no network)
+        run: python3 scripts/rebake.py --selftest
+
+      - name: Run rebake
         id: rebake
         env:
           INSTANTLY_API_KEY: ${{ secrets.INSTANTLY_API_KEY }}
         run: |
-          MSG=$(python3 scripts/rebake.py)
-          echo "msg=$MSG" >> "$GITHUB_OUTPUT"
+          set -o pipefail
+          python3 scripts/rebake.py | tee /tmp/rebake.out
+          echo "msg=$(tail -n1 /tmp/rebake.out)" >> "$GITHUB_OUTPUT"
 
-      - name: Commit and push if changed
-        if: steps.rebake.outputs.msg != 'NO_CHANGE'
+      - name: Commit and push if index.html changed
         run: |
+          if git diff --quiet -- index.html; then
+            echo "No change to index.html — nothing to commit."
+            exit 0
+          fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
