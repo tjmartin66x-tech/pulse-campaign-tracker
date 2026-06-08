@@ -217,7 +217,7 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
   </div>
   <h3 style="margin-top:14px">Per campaign</h3>
   <table class="lead-table" id="perf-table" style="margin-top:6px">
-    <thead><tr><th>Campaign</th><th style="text-align:right">Leads</th><th style="text-align:right">Sent</th><th style="text-align:right">Opens</th><th style="text-align:right">Replies</th><th style="text-align:right">Bounces</th><th style="text-align:right">Reply rate</th></tr></thead>
+    <thead><tr><th>Campaign</th><th>Description</th><th style="text-align:right">Leads</th><th style="text-align:right">Sent</th><th style="text-align:right">Opens</th><th style="text-align:right">Replies</th><th style="text-align:right">Bounces</th><th style="text-align:right">Reply rate</th></tr></thead>
     <tbody id="perf-rows"></tbody>
   </table>
 </section>
@@ -659,6 +659,20 @@ DATA.doctrine.key_files.forEach(f => {
     set("signal-pulled", "pulled " + DATA.meta.last_refresh);
   }
   // Per-campaign rows
+  const CAMP_DESC = {
+    "FP_S1_PAY_T1L": "Payout commit · Tier 1, low band",
+    "FP_S1_PAY_T1M": "Payout commit · Tier 1, mid band",
+    "FP_S1_PAY_T1_C8": "Claim-payout commit · cohort 8",
+    "FP_S1_PAY_T2L": "Payout commit · Tier 2, low band",
+    "FP_S1_PAY_T2M": "Payout commit · Tier 2, mid band",
+    "FP_S1_REF_C8": "Refund commit · cohort 8",
+    "FP_S1_REF_T1H": "Refund commit · Tier 1, high band",
+    "FP_S1_REF_T1M": "Refund commit · Tier 1, mid band",
+    "FP_S1_REF_T2L": "Refund commit · Tier 2, low band",
+    "FP_S1_REF_T2M": "Refund commit · Tier 2, mid band",
+    "FP_S1_REF_DF": "Refund commit · default / holding",
+    "FP_S1_EAX_C8": "Loan-funding commit · cohort 8",
+  };
   const rowsTbody = document.getElementById("perf-rows");
   if (rowsTbody && p.per_campaign) {
     const labelOrder = ["FP_S1_PAY_T1M","FP_S1_PAY_T1L","FP_S1_PAY_T1_C8","FP_S1_PAY_T2L","FP_S1_PAY_T2M","FP_S1_REF_T1H","FP_S1_REF_T1M","FP_S1_REF_T2L","FP_S1_REF_T2M","FP_S1_REF_DF"];
@@ -679,6 +693,7 @@ DATA.doctrine.key_files.forEach(f => {
       const rr = sent > 0 ? ((ru/sent)*100).toFixed(1)+"%" : "—";
       return `<tr>
         <td><span class="mono">${short(full)}</span> ${statusPill(info.status)}</td>
+        <td class="muted" style="font-size:11px">${CAMP_DESC[full] || ""}</td>
         <td style="text-align:right">${info.leads_count || 0}</td>
         <td style="text-align:right">${sent}</td>
         <td style="text-align:right">${info.opens_unique || 0}</td>
