@@ -294,6 +294,7 @@ def main():
     lines, d = load_html()
     prev_total = d["summary"]["total_leads"]
     prev_perf = json.loads(json.dumps(d["performance"]))
+    prev_leads = json.dumps(d["leads"], sort_keys=True, ensure_ascii=False)
     campaigns = d["campaigns"]
     id_to_name = {c["id"]: c["name"] for c in campaigns}
     fp_ids = set(id_to_name)
@@ -332,8 +333,9 @@ def main():
         print("VALIDATION_FAILED: " + "; ".join(fails))
         sys.exit(2)
 
-    # ---- change detection
-    if (len(roster) == prev_total and d["performance"]["totals"] == prev_perf["totals"]
+    # ---- change detection (count + performance + per-lead roster content)
+    leads_unchanged = json.dumps(d["leads"], sort_keys=True, ensure_ascii=False) == prev_leads
+    if (leads_unchanged and d["performance"]["totals"] == prev_perf["totals"]
             and d["performance"]["rates"] == prev_perf["rates"]):
         print("NO_CHANGE")
         sys.exit(0)
