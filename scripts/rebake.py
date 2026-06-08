@@ -182,7 +182,14 @@ def rebuild_signal_activity(sa, live_rows, ts):
 
 def update_performance(perf, analytics, campaigns):
     by_name = {a["campaign_name"]: a for a in analytics}
-    for name, row in perf["per_campaign"].items():
+    pc = perf["per_campaign"]
+    # ensure a row exists for every campaign card (new campaigns self-heal)
+    for c in campaigns:
+        pc.setdefault(c["name"], {"status": c.get("status", 0), "sender": c.get("sender", ""),
+                                  "leads_count": 0, "sent": 0, "completed": 0, "opens": 0,
+                                  "opens_unique": 0, "replies": 0, "replies_unique": 0,
+                                  "clicks": 0, "bounces": 0, "unsubs": 0})
+    for name, row in pc.items():
         a = by_name.get(name)
         if not a:
             continue
