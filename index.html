@@ -727,10 +727,10 @@ DATA.doctrine.key_files.forEach(f => {
       const rr = sent > 0 ? ((ru/sent)*100).toFixed(1)+"%" : "—";
       const cp = CAMP_PROGRESS[full];  // sequence delivery progress (avg steps sent / 5)
       const cpCell = (cp == null) ? '<span class="muted">—</span>'
-        : `<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-             <div style="flex:0 0 46px;height:6px;background:rgba(125,125,125,0.2);border-radius:3px;overflow:hidden">
-               <div style="width:${cp}%;height:100%;background:var(--accent,#1d4ed8)"></div></div>
-             <span>${cp}%</span></div>`;
+        : `<span style="display:inline-flex;align-items:center;gap:6px">`
+          + `<span style="display:inline-block;width:54px;height:9px;background:rgba(125,125,125,0.25);border-radius:5px;overflow:hidden">`
+          + `<span style="display:block;width:${Math.max(cp,2)}%;height:9px;background:#1d4ed8"></span></span>`
+          + `<span>${cp}%</span></span>`;
       return `<tr>
         <td><span class="mono">${short(full)}</span> ${statusPill(info.status)}</td>
         <td class="muted" style="font-size:11px">${CAMP_DESC[full] || ""}</td>
