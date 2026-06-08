@@ -217,7 +217,7 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
   </div>
   <h3 style="margin-top:14px">Per campaign</h3>
   <table class="lead-table" id="perf-table" style="margin-top:6px">
-    <thead><tr><th>Campaign</th><th>Description</th><th style="text-align:right">Leads</th><th style="text-align:right">Sent</th><th style="text-align:right">Opens</th><th style="text-align:right">Replies</th><th style="text-align:right">Bounces</th><th style="text-align:right">Reply rate</th></tr></thead>
+    <thead><tr><th>Campaign</th><th>Description</th><th style="text-align:right">Leads</th><th style="text-align:right">Sent</th><th style="text-align:right">Opens</th><th style="text-align:right">Replies</th><th style="text-align:right">Bounces</th><th style="text-align:right">Reply rate</th><th style="text-align:right">Completion</th></tr></thead>
     <tbody id="perf-rows"></tbody>
   </table>
 </section>
@@ -689,17 +689,22 @@ DATA.doctrine.key_files.forEach(f => {
   const SEG = { A_SUBSCRIPTION: "Subscription", B_HEALTHCARE: "Healthcare", D_BANKING: "Banking", E_INSURANCE: "Insurance" };
   const top2 = (counts) => Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0]);
   const CAMP_DESC = {};
+  const CAMP_COMPLETION = {};   // % through the 5-step sequence (avg steps sent / 5)
   (() => {
+    const SEQ_STEPS = 5;
     const groups = {};
     DATA.leads.forEach(l => { (groups[l.campaign_name] = groups[l.campaign_name] || []).push(l); });
     for (const [full, g] of Object.entries(groups)) {
       const pc = {}, sc = {};
+      let stepSum = 0;
       g.forEach(l => {
         const p = personaOf(l.target_dm); if (p) pc[p] = (pc[p] || 0) + 1;
         const s = SEG[l.template]; if (s) sc[s] = (sc[s] || 0) + 1;
+        stepSum += (l.sent_step || 0);
       });
       const persons = top2(pc).join(" / "), segs = top2(sc).join(" + ");
       CAMP_DESC[full] = persons ? (segs ? `${persons} · ${segs}` : persons) : "";
+      CAMP_COMPLETION[full] = g.length ? Math.round(stepSum / (g.length * SEQ_STEPS) * 100) : null;
     }
   })();
   const rowsTbody = document.getElementById("perf-rows");
@@ -720,6 +725,12 @@ DATA.doctrine.key_files.forEach(f => {
       const sent = info.sent || 0;
       const ru = info.replies_unique || 0;
       const rr = sent > 0 ? ((ru/sent)*100).toFixed(1)+"%" : "—";
+      const cp = CAMP_COMPLETION[full];
+      const cpCell = (cp == null) ? '<span class="muted">—</span>'
+        : `<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+             <div style="flex:0 0 46px;height:6px;background:rgba(125,125,125,0.2);border-radius:3px;overflow:hidden">
+               <div style="width:${cp}%;height:100%;background:var(--accent,#1d4ed8)"></div></div>
+             <span>${cp}%</span></div>`;
       return `<tr>
         <td><span class="mono">${short(full)}</span> ${statusPill(info.status)}</td>
         <td class="muted" style="font-size:11px">${CAMP_DESC[full] || ""}</td>
@@ -729,6 +740,7 @@ DATA.doctrine.key_files.forEach(f => {
         <td style="text-align:right">${ru}</td>
         <td style="text-align:right">${info.bounces || 0}</td>
         <td style="text-align:right">${rr}</td>
+        <td style="text-align:right">${cpCell}</td>
       </tr>`;
     }).join("");
   }
