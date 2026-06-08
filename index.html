@@ -309,6 +309,23 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
   <ul class="files-list" id="files-list"></ul>
 </section>
 
+<section style="margin-top:18px">
+  <h3>About the C8 cohort</h3>
+  <p style="font-size:12px;color:var(--tx-soft);max-width:820px;line-height:1.6">
+    <strong>C8 = "Cohort 8"</strong> — the 8th lead-sourcing cohort, run across three commit surfaces:
+    <strong>PAY&nbsp;T1&nbsp;C8</strong> (claim-payout), <strong>REF&nbsp;C8</strong> (refund), and
+    <strong>EAX&nbsp;C8</strong> (loan-funding). It currently holds
+    <strong><span id="c8-total">—</span> leads</strong>
+    (PAY&nbsp;C8 <span id="c8-pay">—</span> · REF&nbsp;C8 <span id="c8-ref">—</span> · EAX&nbsp;C8 <span id="c8-eax">—</span>).
+    <br>
+    <strong>Source:</strong> assembled late&nbsp;May–early&nbsp;June&nbsp;2026, primarily from Apollo-verified
+    <span class="mono">cohort_8_payout</span> lists, plus high-tier <span class="mono">scanner_run</span> pulls,
+    the <span class="mono">v21 BATCH8–11</span> loads (2026-05-26), the REF rehome (<span class="mono">ref_c8_rehome_0528</span>),
+    and early-June net-new adds (<span class="mono">freshdisc / NCUA</span> and <span class="mono">fp_exa_r1_netnew</span> for EAX).
+    Provenance is mixed and inferred from per-lead Instantly tags — not a single source list.
+  </p>
+</section>
+
 <footer style="font-size:10px;color:var(--tx-soft);margin-top:24px;border-top:1px solid var(--border);padding-top:10px">
   Generated 2026-06-08 11:07 UTC · 509 leads sourced live from Instantly · Doctrine vintage: v10 + v7.2 batch1to5 (+39) + Apollo top-20 (+48 interleaved).
   Sources: <a href="#">PAYOUT v10 Load Spec</a>, <a href="#">Fallback CFO v5</a>, <a href="#">BIE v2.2</a>.
@@ -719,6 +736,16 @@ DATA.doctrine.key_files.forEach(f => {
       </tr>`;
     }).join("");
   }
+})();
+
+// C8 cohort lead counts (live from roster)
+(() => {
+  const c8 = { "FP_S1_PAY_T1_C8": "c8-pay", "FP_S1_REF_C8": "c8-ref", "FP_S1_EAX_C8": "c8-eax" };
+  const n = {}; let total = 0;
+  DATA.leads.forEach(l => { if (c8[l.campaign_name]) { n[l.campaign_name] = (n[l.campaign_name] || 0) + 1; total++; } });
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set("c8-total", total);
+  Object.entries(c8).forEach(([full, id]) => set(id, n[full] || 0));
 })();
 </script>
 <script>
