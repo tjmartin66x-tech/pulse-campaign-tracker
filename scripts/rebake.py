@@ -117,6 +117,17 @@ def derive_template(payload):
         return "A_SUBSCRIPTION"
     return ""  # unknown - leave blank rather than guess
 
+def emails_sent_step(ll):
+    """Number of sequence emails sent to this lead (E1..EN), from
+    status_summary.lastStep.stepID like '0_2_0' (middle = 0-based step index)."""
+    sid = ((ll.get("status_summary") or {}).get("lastStep") or {}).get("stepID")
+    if not sid:
+        return 0
+    try:
+        return int(sid.split("_")[1]) + 1
+    except (IndexError, ValueError):
+        return 0
+
 def build_record(ll, camp_name):
     """Construct a dashboard lead record from a live Instantly lead."""
     p = ll.get("payload") or {}
@@ -145,7 +156,7 @@ def build_record(ll, camp_name):
         "priority": p.get("priority", "") or "P3",
         "campaign_name": camp_name,
         "surface_evidence": p.get("surface_evidence", "") or "",
-        "opens": 0, "replies": 0, "clicks": 0,
+        "opens": 0, "replies": 0, "clicks": 0, "sent_step": 0, "lead_status": 0,
     }
 
 # ----------------------------------------------------------------------------- rebuild
@@ -304,6 +315,8 @@ def main():
         rec["opens"] = ll.get("email_open_count", 0) or 0
         rec["replies"] = ll.get("email_reply_count", 0) or 0
         rec["clicks"] = ll.get("email_click_count", 0) or 0
+        rec["sent_step"] = emails_sent_step(ll)        # emails sent so far (E1..EN)
+        rec["lead_status"] = ll.get("status", 0)       # 1=active 3=completed 4=stopped etc.
         roster.append(rec)
         live_rows.append((rec, ll.get("email_open_count", 0) or 0,
                           ll.get("email_reply_count", 0) or 0, ll.get("email_click_count", 0) or 0))

@@ -278,6 +278,7 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
       <th data-sort="match_path">Match</th>
       <th data-sort="target_dm">DM</th>
       <th data-sort="template">Tmpl</th>
+      <th data-sort="sent_step">Sequence</th>
       <th data-sort="opens" style="text-align:right">Opened</th>
     </tr></thead>
     <tbody></tbody>
@@ -472,6 +473,20 @@ function getFiltered() {
   });
 }
 
+// Sequence cell: emails sent (E1..EN) + next step for still-active leads.
+function seqCell(l) {
+  const sent = l.sent_step || 0, st = l.lead_status, TOTAL = 5;
+  if (sent <= 0) return '<span class="muted">not sent</span>';
+  const sentLabel = sent === 1 ? "E1" : `E1–E${sent}`;
+  let nxt;
+  if (sent >= TOTAL) nxt = '<span class="muted">done</span>';
+  else if (st === 1) nxt = `next <strong>E${sent + 1}</strong>`;
+  else if (st === 3) nxt = '<span class="muted">completed</span>';
+  else if (st === 4 || st === -1 || st === -2) nxt = '<span class="muted">stopped</span>';
+  else nxt = '<span class="muted">paused</span>';
+  return `${sentLabel} · ${nxt}`;
+}
+
 function renderTable() {
   const rows = getFiltered();
   document.getElementById("lead-count").textContent = rows.length;
@@ -493,13 +508,14 @@ function renderTable() {
       <td class="mono" style="font-size:10px">${escapeHtml((l.match_path||"").slice(0,22))}</td>
       <td class="muted">${escapeHtml(l.target_dm||"")}</td>
       <td class="muted">${escapeHtml((l.template||"").split('_')[0])}</td>
+      <td style="font-size:11px;white-space:nowrap">${seqCell(l)}</td>
       <td style="text-align:right">${(l.opens||0) > 0 ? `<span class="pill" style="background:#15803d;color:white">${l.opens}</span>` : `<span class="muted">0</span>`}</td>`;
     tr.onclick = () => { expandedEmail = (expandedEmail === l.email) ? null : l.email; renderTable(); };
     tb.appendChild(tr);
     if (expandedEmail === l.email) {
       const dt = document.createElement("tr");
       dt.className = "lead-detail";
-      const td = document.createElement("td"); td.colSpan = 11;
+      const td = document.createElement("td"); td.colSpan = 12;
       td.innerHTML = `
         <div class="detail-subject">${escapeHtml(l.subject)}</div>
         <div class="detail-grid" style="margin-top:10px">
