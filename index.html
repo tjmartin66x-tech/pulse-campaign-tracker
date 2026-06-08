@@ -473,6 +473,8 @@ function getFiltered() {
   });
 }
 
+// Sequence + Opened detail is surfaced only for engaged leads (>= this many opens)
+const OPEN_VIS_MIN = 4;
 // Sequence cell: emails sent (E1..EN) + next step for still-active leads.
 function seqCell(l) {
   const sent = l.sent_step || 0, st = l.lead_status, TOTAL = 5;
@@ -508,8 +510,8 @@ function renderTable() {
       <td class="mono" style="font-size:10px">${escapeHtml((l.match_path||"").slice(0,22))}</td>
       <td class="muted">${escapeHtml(l.target_dm||"")}</td>
       <td class="muted">${escapeHtml((l.template||"").split('_')[0])}</td>
-      <td style="font-size:11px;white-space:nowrap">${seqCell(l)}</td>
-      <td style="text-align:right">${(l.opens||0) > 0 ? `<span class="pill" style="background:#15803d;color:white">${l.opens}</span>` : `<span class="muted">0</span>`}</td>`;
+      <td style="font-size:11px;white-space:nowrap">${(l.opens||0) >= OPEN_VIS_MIN ? seqCell(l) : `<span class="muted">—</span>`}</td>
+      <td style="text-align:right">${(l.opens||0) >= OPEN_VIS_MIN ? `<span class="pill" style="background:#15803d;color:white">${l.opens}</span>` : `<span class="muted">—</span>`}</td>`;
     tr.onclick = () => { expandedEmail = (expandedEmail === l.email) ? null : l.email; renderTable(); };
     tb.appendChild(tr);
     if (expandedEmail === l.email) {
