@@ -145,6 +145,7 @@ def build_record(ll, camp_name):
         "priority": p.get("priority", "") or "P3",
         "campaign_name": camp_name,
         "surface_evidence": p.get("surface_evidence", "") or "",
+        "opens": 0, "replies": 0, "clicks": 0,
     }
 
 # ----------------------------------------------------------------------------- rebuild
@@ -229,19 +230,30 @@ def validate(d, prev_total):
     return fails
 
 # ----------------------------------------------------------------------------- io
+def _find(lines, pred, what):
+    for i, l in enumerate(lines):
+        if pred(l):
+            return i
+    sys.exit(f"ERROR: could not locate {what} in index.html")
+
 def load_html():
     lines = open(HTML_PATH).readlines()
-    m = re.match(r"const DATA = (.*);\s*$", lines[312].strip())
+    di = _find(lines, lambda l: l.startswith("const DATA = "), "DATA blob")
+    m = re.match(r"const DATA = (.*);\s*$", lines[di].strip())
     if not m:
-        sys.exit("ERROR: DATA blob not found on line 313")
+        sys.exit("ERROR: DATA blob malformed")
     return lines, json.loads(m.group(1))
 
 def write_html(lines, d, ts):
-    lines[312] = "const DATA = " + json.dumps(d, separators=(",", ":"), ensure_ascii=True) + ";\n"
+    # locate target lines by content (resilient to HTML edits shifting line numbers)
+    di = _find(lines, lambda l: l.startswith("const DATA = "), "DATA blob")
+    lines[di] = "const DATA = " + json.dumps(d, separators=(",", ":"), ensure_ascii=True) + ";\n"
     n = d["summary"]["total_leads"]
-    lines[130] = re.sub(r'(fresh-tag">)\d+ leads loaded(<)', rf"\g<1>{n} leads loaded\2", lines[130])
-    lines[130] = re.sub(r'(<span class="live-tag">)[^<]*(</span>)', rf"\g<1>{ts}\2", lines[130])
-    lines[307] = re.sub(r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", f"Generated {ts}", lines[307])
+    hi = _find(lines, lambda l: '<span class="live-tag">' in l, "header live-tag")
+    lines[hi] = re.sub(r'(fresh-tag">)\d+ leads loaded(<)', rf"\g<1>{n} leads loaded\2", lines[hi])
+    lines[hi] = re.sub(r'(<span class="live-tag">)[^<]*(</span>)', rf"\g<1>{ts}\2", lines[hi])
+    fi = _find(lines, lambda l: re.search(r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", l), "footer Generated")
+    lines[fi] = re.sub(r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", f"Generated {ts}", lines[fi])
     open(HTML_PATH, "w").writelines(lines)
 
 # ----------------------------------------------------------------------------- selftest
@@ -288,6 +300,10 @@ def main():
         email = ll.get("email")
         rec = baked.get(email) or build_record(ll, id_to_name[cid])
         rec["campaign_name"] = id_to_name[cid]   # keep campaign current on moves
+        # attach live per-lead engagement so the dashboard can show who opened
+        rec["opens"] = ll.get("email_open_count", 0) or 0
+        rec["replies"] = ll.get("email_reply_count", 0) or 0
+        rec["clicks"] = ll.get("email_click_count", 0) or 0
         roster.append(rec)
         live_rows.append((rec, ll.get("email_open_count", 0) or 0,
                           ll.get("email_reply_count", 0) or 0, ll.get("email_click_count", 0) or 0))

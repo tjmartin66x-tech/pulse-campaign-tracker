@@ -260,6 +260,8 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
     <select id="f-dm"><option value="">All</option></select>
     <label>P-class</label>
     <select id="f-pc"><option value="">All</option></select>
+    <label>Opens</label>
+    <select id="f-open"><option value="">All</option><option value="y">Opened</option><option value="n">Not opened</option></select>
     <input id="f-q" type="search" placeholder="search email/co...">
     <button id="f-reset">Reset</button>
     <span class="filter-count">Showing <span id="lead-count-mini">509</span> / 509</span>
@@ -276,6 +278,7 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
       <th data-sort="match_path">Match</th>
       <th data-sort="target_dm">DM</th>
       <th data-sort="template">Tmpl</th>
+      <th data-sort="opens" style="text-align:right">Opened</th>
     </tr></thead>
     <tbody></tbody>
   </table>
@@ -450,6 +453,7 @@ function getFiltered() {
   const tmpl = document.getElementById("f-tmpl").value;
   const dm = document.getElementById("f-dm").value;
   const pc = document.getElementById("f-pc").value;
+  const opened = document.getElementById("f-open").value;
   const q = document.getElementById("f-q").value.toLowerCase().trim();
   return DATA.leads.filter(l => {
     if (camp && l.campaign_name !== camp) return false;
@@ -457,6 +461,8 @@ function getFiltered() {
     if (tmpl && l.template !== tmpl) return false;
     if (dm && l.target_dm !== dm) return false;
     if (pc && l.p_class !== pc) return false;
+    if (opened === "y" && !((l.opens||0) > 0)) return false;
+    if (opened === "n" && ((l.opens||0) > 0)) return false;
     if (q && !(l.email.toLowerCase().includes(q) || l.company.toLowerCase().includes(q))) return false;
     return true;
   }).sort((a,b) => {
@@ -486,13 +492,14 @@ function renderTable() {
       <td>${escapeHtml(l.p_class||"")}</td>
       <td class="mono" style="font-size:10px">${escapeHtml((l.match_path||"").slice(0,22))}</td>
       <td class="muted">${escapeHtml(l.target_dm||"")}</td>
-      <td class="muted">${escapeHtml((l.template||"").split('_')[0])}</td>`;
+      <td class="muted">${escapeHtml((l.template||"").split('_')[0])}</td>
+      <td style="text-align:right">${(l.opens||0) > 0 ? `<span class="pill" style="background:#15803d;color:white">${l.opens}</span>` : `<span class="muted">0</span>`}</td>`;
     tr.onclick = () => { expandedEmail = (expandedEmail === l.email) ? null : l.email; renderTable(); };
     tb.appendChild(tr);
     if (expandedEmail === l.email) {
       const dt = document.createElement("tr");
       dt.className = "lead-detail";
-      const td = document.createElement("td"); td.colSpan = 10;
+      const td = document.createElement("td"); td.colSpan = 11;
       td.innerHTML = `
         <div class="detail-subject">${escapeHtml(l.subject)}</div>
         <div class="detail-grid" style="margin-top:10px">
@@ -518,12 +525,12 @@ function renderTable() {
   });
 }
 
-["f-camp","f-band","f-tmpl","f-dm","f-pc","f-q"].forEach(id => {
+["f-camp","f-band","f-tmpl","f-dm","f-pc","f-open","f-q"].forEach(id => {
   document.getElementById(id).addEventListener("input", renderTable);
   document.getElementById(id).addEventListener("change", renderTable);
 });
 document.getElementById("f-reset").onclick = () => {
-  ["f-camp","f-band","f-tmpl","f-dm","f-pc","f-q"].forEach(id => document.getElementById(id).value = "");
+  ["f-camp","f-band","f-tmpl","f-dm","f-pc","f-open","f-q"].forEach(id => document.getElementById(id).value = "");
   renderTable();
 };
 document.querySelectorAll("#lead-table thead th").forEach(th => {
