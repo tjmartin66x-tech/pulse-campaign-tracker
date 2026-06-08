@@ -310,20 +310,16 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
 </section>
 
 <section style="margin-top:18px">
-  <h3>About the C8 cohort</h3>
-  <p style="font-size:12px;color:var(--text);max-width:820px;line-height:1.6">
-    <strong>C8 = "Cohort 8"</strong> — the 8th lead-sourcing cohort, run across three commit surfaces:
-    <strong>PAY&nbsp;T1&nbsp;C8</strong> (claim-payout), <strong>REF&nbsp;C8</strong> (refund), and
-    <strong>EAX&nbsp;C8</strong> (loan-funding). It currently holds
-    <strong><span id="c8-total">—</span> leads</strong>
-    (PAY&nbsp;C8 <span id="c8-pay">—</span> · REF&nbsp;C8 <span id="c8-ref">—</span> · EAX&nbsp;C8 <span id="c8-eax">—</span>).
-    <br>
-    <strong>Source:</strong> assembled late&nbsp;May–early&nbsp;June&nbsp;2026, primarily from Apollo-verified
-    <span class="mono">cohort_8_payout</span> lists, plus high-tier <span class="mono">scanner_run</span> pulls,
-    the <span class="mono">v21 BATCH8–11</span> loads (2026-05-26), the REF rehome (<span class="mono">ref_c8_rehome_0528</span>),
-    and early-June net-new adds (<span class="mono">freshdisc / NCUA</span> and <span class="mono">fp_exa_r1_netnew</span> for EAX).
-    Provenance is mixed and inferred from per-lead Instantly tags — not a single source list.
+  <h3>Campaign sourcing &amp; provenance</h3>
+  <p style="font-size:12px;color:var(--text);max-width:860px;line-height:1.6">
+    <strong>C8 = "Cohort 8"</strong> — the 8th lead-sourcing cohort, spanning the three C8 surfaces below
+    (PAY claim-payout, REF refund, EAX loan-funding). Lead counts are live from the roster; sources are
+    inferred from per-lead Instantly tags and create dates are the campaign's creation in Instantly.
   </p>
+  <table class="lead-table" style="margin-top:8px">
+    <thead><tr><th>Campaign</th><th style="text-align:right">Leads</th><th>Source</th><th>Created</th></tr></thead>
+    <tbody id="provenance-rows"></tbody>
+  </table>
 </section>
 
 <footer style="font-size:10px;color:var(--tx-soft);margin-top:24px;border-top:1px solid var(--border);padding-top:10px">
@@ -738,14 +734,29 @@ DATA.doctrine.key_files.forEach(f => {
   }
 })();
 
-// C8 cohort lead counts (live from roster)
+// Campaign sourcing & provenance table (leads live; source + created curated)
 (() => {
-  const c8 = { "FP_S1_PAY_T1_C8": "c8-pay", "FP_S1_REF_C8": "c8-ref", "FP_S1_EAX_C8": "c8-eax" };
-  const n = {}; let total = 0;
-  DATA.leads.forEach(l => { if (c8[l.campaign_name]) { n[l.campaign_name] = (n[l.campaign_name] || 0) + 1; total++; } });
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set("c8-total", total);
-  Object.entries(c8).forEach(([full, id]) => set(id, n[full] || 0));
+  const META = {
+    "FP_S1_PAY_T1L":   { src: "C7 PAY-T1 lists (3l–5l) + v7.2 web-verified batches 1–5", created: "2026-05-18" },
+    "FP_S1_PAY_T1M":   { src: "C7 PAY-T1-6m + cohort_5a Apollo top-20/batches (5/21)", created: "2026-05-18" },
+    "FP_S1_PAY_T2L":   { src: "June net-new — fp_exa_r1 + freshdisc NAIC parametric", created: "2026-05-18" },
+    "FP_S1_REF_T1H":   { src: "C7 REF-T1 high-band (9h/10h)", created: "2026-05-18" },
+    "FP_S1_REF_T1M":   { src: "C7 REF-T1 mid-band (8m)", created: "2026-05-18" },
+    "FP_S1_PAY_T1_C8": { src: "cohort_8_payout (Apollo) + scanner H-tier + v21 BATCH8–11 (5/26)", created: "2026-05-26" },
+    "FP_S1_REF_C8":    { src: "REF C8 rehome 5/28 + June net-new (exa_r1 / fp_batch)", created: "2026-05-28" },
+    "FP_S1_EAX_C8":    { src: "June net-new loan-funding (NCUA freshdisc / exa_r1) — untagged in Instantly", created: "2026-06-05" },
+  };
+  const counts = {};
+  DATA.leads.forEach(l => { counts[l.campaign_name] = (counts[l.campaign_name] || 0) + 1; });
+  const short = (f) => f.replace(/^FP_S1_/, "").replace(/_/g, " ");
+  const tb = document.getElementById("provenance-rows");
+  if (tb) tb.innerHTML = Object.entries(META).map(([full, m]) => `
+    <tr>
+      <td><span class="mono">${short(full)}</span></td>
+      <td style="text-align:right">${counts[full] || 0}</td>
+      <td style="font-size:11px">${m.src}</td>
+      <td class="mono" style="font-size:11px">${m.created}</td>
+    </tr>`).join("");
 })();
 </script>
 <script>
