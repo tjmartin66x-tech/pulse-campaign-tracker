@@ -277,6 +277,7 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
       <th data-sort="p_class">PC</th>
       <th data-sort="match_path">Match</th>
       <th data-sort="target_dm">DM</th>
+      <th data-sort="campaign_name">Campaign</th>
       <th data-sort="template">Tmpl</th>
       <th data-sort="sent_step">Sequence</th>
       <th data-sort="opens" style="text-align:right">Opened</th>
@@ -507,6 +508,7 @@ function renderTable() {
       <td>${escapeHtml(l.p_class||"")}</td>
       <td class="mono" style="font-size:10px">${escapeHtml((l.match_path||"").slice(0,22))}</td>
       <td class="muted">${escapeHtml(l.target_dm||"")}</td>
+      <td class="mono" style="font-size:10px">${escapeHtml((l.campaign_name||"").replace(/^FP_S1_/,"").replace(/_/g," "))}</td>
       <td class="muted">${escapeHtml((l.template||"").split('_')[0])}</td>
       <td style="font-size:11px;white-space:nowrap">${seqCell(l)}</td>
       <td style="text-align:right">${(l.opens||0) > 0 ? `<span class="pill" style="background:#15803d;color:white">${l.opens}</span>` : `<span class="muted">0</span>`}</td>`;
@@ -515,7 +517,7 @@ function renderTable() {
     if (expandedEmail === l.email) {
       const dt = document.createElement("tr");
       dt.className = "lead-detail";
-      const td = document.createElement("td"); td.colSpan = 12;
+      const td = document.createElement("td"); td.colSpan = 13;
       td.innerHTML = `
         <div class="detail-subject">${escapeHtml(l.subject)}</div>
         <div class="detail-grid" style="margin-top:10px">
