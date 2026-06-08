@@ -251,7 +251,7 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
   <h2>Lead inventory · <span id="lead-count">509</span> filtered</h2>
   <div class="filter-bar">
     <label>Campaign</label>
-    <select id="f-camp"><option value="">All</option><option value="PAY T1L">PAY T1L (138)</option><option value="PAY T1M">PAY T1M (127)</option><option value="PAY T1 C8">PAY T1 C8 (139)</option><option value="PAY T2L">PAY T2L (1)</option><option value="REF C8">REF C8 (100)</option><option value="REF T1H">REF T1H (3)</option><option value="REF T1M">REF T1M (1)</option></select>
+    <select id="f-camp"><option value="">All</option></select>
     <label>Band</label>
     <select id="f-band"><option value="">All</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option></select>
     <label>Template</label>
@@ -422,6 +422,17 @@ async function fetchLive() {
 fetchLive();
 
 // Filters
+// Campaign filter: built from live roster. Option value is the FULL campaign_name
+// (e.g. "FP_S1_PAY_T1L") so it matches lead records; label shows the short name + count.
+const campSel = document.getElementById("f-camp");
+const campCounts = {};
+DATA.leads.forEach(l => { campCounts[l.campaign_name] = (campCounts[l.campaign_name] || 0) + 1; });
+Object.keys(campCounts).sort().forEach(full => {
+  const label = full.replace(/^FP_S1_/, "").replace(/_/g, " ");
+  const o = document.createElement("option");
+  o.value = full; o.textContent = `${label} (${campCounts[full]})`;
+  campSel.appendChild(o);
+});
 const dmSel = document.getElementById("f-dm");
 Object.keys(s.by_target_dm).sort().forEach(dm => {
   const o = document.createElement("option"); o.value = dm; o.textContent = `${dm} (${s.by_target_dm[dm]})`; dmSel.appendChild(o);
