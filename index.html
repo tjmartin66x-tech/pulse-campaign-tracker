@@ -659,20 +659,34 @@ DATA.doctrine.key_files.forEach(f => {
     set("signal-pulled", "pulled " + DATA.meta.last_refresh);
   }
   // Per-campaign rows
-  const CAMP_DESC = {
-    "FP_S1_PAY_T1L": "Payout commit · Tier 1, low band",
-    "FP_S1_PAY_T1M": "Payout commit · Tier 1, mid band",
-    "FP_S1_PAY_T1_C8": "Claim-payout commit · cohort 8",
-    "FP_S1_PAY_T2L": "Payout commit · Tier 2, low band",
-    "FP_S1_PAY_T2M": "Payout commit · Tier 2, mid band",
-    "FP_S1_REF_C8": "Refund commit · cohort 8",
-    "FP_S1_REF_T1H": "Refund commit · Tier 1, high band",
-    "FP_S1_REF_T1M": "Refund commit · Tier 1, mid band",
-    "FP_S1_REF_T2L": "Refund commit · Tier 2, low band",
-    "FP_S1_REF_T2M": "Refund commit · Tier 2, mid band",
-    "FP_S1_REF_DF": "Refund commit · default / holding",
-    "FP_S1_EAX_C8": "Loan-funding commit · cohort 8",
+  // Description = target personas · industry segments, computed live from the roster.
+  const personaOf = (dm) => {
+    const s = (dm || "").toLowerCase();
+    if (s.includes("controller")) return "Controller";
+    if (s.includes("cfo") || s.includes("chief financial") || s.includes("finance") || s.includes("fp&a") || s.includes("treasur")) return "CFO/Finance";
+    if (s.includes("risk") || s.includes("cro") || s.includes("bsa") || s.includes("compliance") || s.includes("credit officer") || s.includes("credit risk")) return "Risk/Credit";
+    if (s.includes("claim")) return "Claims";
+    if (s.includes("revenue cycle") || s.includes("rcm")) return "Rev Cycle";
+    if (s.includes("payout") || s.includes("payment")) return "Payments";
+    if (s.includes("ceo") || s.includes("coo") || s.includes("president")) return "C-suite/Ops";
+    return s ? "Other" : null;
   };
+  const SEG = { A_SUBSCRIPTION: "Subscription", B_HEALTHCARE: "Healthcare", D_BANKING: "Banking", E_INSURANCE: "Insurance" };
+  const top2 = (counts) => Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0]);
+  const CAMP_DESC = {};
+  (() => {
+    const groups = {};
+    DATA.leads.forEach(l => { (groups[l.campaign_name] = groups[l.campaign_name] || []).push(l); });
+    for (const [full, g] of Object.entries(groups)) {
+      const pc = {}, sc = {};
+      g.forEach(l => {
+        const p = personaOf(l.target_dm); if (p) pc[p] = (pc[p] || 0) + 1;
+        const s = SEG[l.template]; if (s) sc[s] = (sc[s] || 0) + 1;
+      });
+      const persons = top2(pc).join(" / "), segs = top2(sc).join(" + ");
+      CAMP_DESC[full] = persons ? (segs ? `${persons} · ${segs}` : persons) : "";
+    }
+  })();
   const rowsTbody = document.getElementById("perf-rows");
   if (rowsTbody && p.per_campaign) {
     const labelOrder = ["FP_S1_PAY_T1M","FP_S1_PAY_T1L","FP_S1_PAY_T1_C8","FP_S1_PAY_T2L","FP_S1_PAY_T2M","FP_S1_REF_T1H","FP_S1_REF_T1M","FP_S1_REF_T2L","FP_S1_REF_T2M","FP_S1_REF_DF"];
