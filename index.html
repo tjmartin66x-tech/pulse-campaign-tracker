@@ -689,17 +689,22 @@ DATA.doctrine.key_files.forEach(f => {
   const SEG = { A_SUBSCRIPTION: "Subscription", B_HEALTHCARE: "Healthcare", D_BANKING: "Banking", E_INSURANCE: "Insurance" };
   const top2 = (counts) => Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0]);
   const CAMP_DESC = {};
+  const CAMP_PROGRESS = {};   // sequence delivery progress = avg steps sent / 5 steps
   (() => {
+    const SEQ_STEPS = 5;
     const groups = {};
     DATA.leads.forEach(l => { (groups[l.campaign_name] = groups[l.campaign_name] || []).push(l); });
     for (const [full, g] of Object.entries(groups)) {
       const pc = {}, sc = {};
+      let stepSum = 0;
       g.forEach(l => {
         const p = personaOf(l.target_dm); if (p) pc[p] = (pc[p] || 0) + 1;
         const s = SEG[l.template]; if (s) sc[s] = (sc[s] || 0) + 1;
+        stepSum += (l.sent_step || 0);
       });
       const persons = top2(pc).join(" / "), segs = top2(sc).join(" + ");
       CAMP_DESC[full] = persons ? (segs ? `${persons} · ${segs}` : persons) : "";
+      CAMP_PROGRESS[full] = g.length ? Math.round(stepSum / (g.length * SEQ_STEPS) * 100) : null;
     }
   })();
   const rowsTbody = document.getElementById("perf-rows");
@@ -720,8 +725,7 @@ DATA.doctrine.key_files.forEach(f => {
       const sent = info.sent || 0;
       const ru = info.replies_unique || 0;
       const rr = sent > 0 ? ((ru/sent)*100).toFixed(1)+"%" : "—";
-      const lc = info.leads_count || 0;
-      const cp = lc > 0 ? Math.round((info.completed || 0) / lc * 100) : null;  // actual sequence completion
+      const cp = CAMP_PROGRESS[full];  // sequence delivery progress (avg steps sent / 5)
       const cpCell = (cp == null) ? '<span class="muted">—</span>'
         : `<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
              <div style="flex:0 0 46px;height:6px;background:rgba(125,125,125,0.2);border-radius:3px;overflow:hidden">
