@@ -31,6 +31,7 @@ from collections import Counter, OrderedDict
 
 BASE = "https://api.instantly.ai/api/v2"
 HTML_PATH = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "index.html"))
+VERSION_PATH = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "version.txt"))
 VALID_TEMPLATES = {"A_SUBSCRIPTION", "B_HEALTHCARE", "D_BANKING", "E_INSURANCE"}
 DIM_FIELDS = [  # (signal_activity key, lead-record field)
     ("signal_band", "signal_band"), ("target_dm", "target_dm"),
@@ -266,6 +267,7 @@ def write_html(lines, d, ts):
     fi = _find(lines, lambda l: re.search(r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", l), "footer Generated")
     lines[fi] = re.sub(r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", f"Generated {ts}", lines[fi])
     open(HTML_PATH, "w").writelines(lines)
+    open(VERSION_PATH, "w").write(ts + "\n")   # for the page's auto-freshness check
 
 # ----------------------------------------------------------------------------- selftest
 def selftest():
