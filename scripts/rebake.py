@@ -202,6 +202,25 @@ def rebuild_signal_activity(sa, live_rows, ts):
     sa["_summary"].update({"pulled_at": ts, "joined_leads": len(live_rows),
                            "inventory_total": len(live_rows)})
 
+STATUS_MAP = {0: "Draft", 1: "Active", 2: "Paused", 3: "Completed", 4: "Stopped"}
+
+def discover_campaigns(d, analytics):
+    """Add any FP_S1 campaign that exists in Instantly but isn't tracked yet, so
+    newly-loaded campaigns appear on the dashboard automatically."""
+    have = {c["name"] for c in d["campaigns"]} | {c["id"] for c in d["campaigns"]}
+    for a in analytics:
+        name, cid = a.get("campaign_name", ""), a.get("campaign_id")
+        if not name.startswith("FP_S1_") or name in have or cid in have:
+            continue
+        st = a.get("campaign_status", 1)
+        band = "C8" if "C8" in name else "T1" if "T1" in name else "T2" if "T2" in name else ""
+        d["campaigns"].append({
+            "name": name, "id": cid, "status": st,
+            "status_label": STATUS_MAP.get(st, "Unknown"), "band": band,
+            "sender": "", "expected": a.get("leads_count", 0), "primary": st == 1,
+        })
+        have |= {name, cid}
+
 def update_performance(perf, analytics, campaigns):
     by_name = {a["campaign_name"]: a for a in analytics}
     pc = perf["per_campaign"]
@@ -308,12 +327,13 @@ def main():
     prev_leads = json.dumps(d["leads"], sort_keys=True, ensure_ascii=False)
     prev_holds = json.dumps(d.get("doctrine", {}).get("holds", []), ensure_ascii=False)
     d.setdefault("doctrine", {})["holds"] = [dict(h) for h in CANONICAL_HOLDS]  # enforce canonical holds
+    # ---- performance + auto-discover any new FP_S1 campaigns from Instantly
+    analytics = fetch_analytics()
+    discover_campaigns(d, analytics)
     campaigns = d["campaigns"]
     id_to_name = {c["id"]: c["name"] for c in campaigns}
     fp_ids = set(id_to_name)
-
-    # ---- performance
-    update_performance(d["performance"], fetch_analytics(), campaigns)
+    update_performance(d["performance"], analytics, campaigns)
 
     # ---- inventory reconcile
     baked = {l["email"]: l for l in d["leads"]}

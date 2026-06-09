@@ -191,7 +191,7 @@ header{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:1
 <section>
   <h2>KPIs</h2>
   <div class="kpi-grid">
-    <div class="kpi hero"><div class="kpi-label">Total leads loaded</div><div class="kpi-value" id="kpi-total">509</div><div class="kpi-sub">7 active campaigns · Surfaces: PAY, REF, EAX</div></div>
+    <div class="kpi hero"><div class="kpi-label">Total leads loaded</div><div class="kpi-value" id="kpi-total">509</div><div class="kpi-sub" id="kpi-surfaces">7 active campaigns · Surfaces: PAY, REF, EAX</div></div>
     <div class="kpi"><div class="kpi-label">Total leads in tenant</div><div class="kpi-value" id="kpi-tenant-total">509</div><div class="kpi-sub" id="kpi-tenant-sub">509 in FP_S1 &middot; 0 uncampaigned/other</div></div>
     <div class="kpi"><div class="kpi-label">Tier 1</div><div class="kpi-value" id="kpi-t1">—</div><div class="kpi-sub">T1M + T1L</div></div>
     <div class="kpi"><div class="kpi-label">Tier 2</div><div class="kpi-value" id="kpi-t2">—</div><div class="kpi-sub">T2L only (Justworks)</div></div>
@@ -431,6 +431,16 @@ async function fetchLive() {
     // Update gate KPI
     const activeCount = camps.filter(c => c.status === 1 && c.name?.startsWith("FP_S1_")).length;
     document.getElementById("kpi-active").textContent = activeCount;
+    // Dynamic campaign labels so newly-loaded campaigns appear everywhere
+    const shortN = (n) => n.replace(/^FP_S1_/, "").replace(/_/g, " ");
+    const fp = camps.filter(c => c.name?.startsWith("FP_S1_"));
+    const actives = fp.filter(c => c.status === 1), drafts = fp.filter(c => c.status === 0);
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt("kpi-active-sub", actives.map(c => shortN(c.name)).join(" · "));
+    setTxt("kpi-draft", drafts.length);
+    setTxt("kpi-draft-sub", drafts.map(c => shortN(c.name)).join(" · "));
+    const surfaces = [...new Set(actives.map(c => (c.name.split("_")[2] || "")))].filter(Boolean);
+    setTxt("kpi-surfaces", `${actives.length} active campaigns · Surfaces: ${surfaces.join(", ")}`);
     if (activeCount > 0) {
       document.getElementById("kpi-gate").textContent = "ACTIVE";
       document.getElementById("kpi-gate").style.color = "var(--ok)";
