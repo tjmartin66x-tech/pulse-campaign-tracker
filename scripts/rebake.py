@@ -182,7 +182,7 @@ def build_record(ll, camp_name):
         "body_word_count": len(body.split()),
         "personalization": p.get("personalization") or ll.get("personalization", "") or "",
         "template": derive_template(p),
-        "match_path": p.get("match_path", "") or "(unknown)",
+        "match_path": p.get("match_path", "") or "(not recorded)",
         "priority": p.get("priority", "") or "P3",
         "campaign_name": camp_name,
         "surface_evidence": p.get("surface_evidence", "") or "",
