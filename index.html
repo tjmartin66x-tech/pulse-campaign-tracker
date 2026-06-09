@@ -147,7 +147,7 @@ function forceLatest(btn){
 </script>
 
 <header>
-  <h1>FP_S1 Campaign Tracker <span class="fresh-tag">701 leads loaded</span> <span class="live-tag">2026-06-09 22:50 UTC</span> <button onclick="forceLatest(this)" title="Force-load the latest deployed version (bypasses browser + CDN cache)" style="margin-left:8px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:6px;padding:3px 9px">&#x21bb; Refresh</button></h1>
+  <h1>FP_S1 Campaign Tracker <span class="fresh-tag">701 leads loaded</span> <span class="live-tag">2026-06-09 22:50 UTC</span> <button id="btn-refresh" onclick="forceLatest(this)" title="Force-load the latest deployed version (bypasses browser + CDN cache)" style="margin-left:8px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:6px;padding:3px 9px">&#x21bb; Refresh</button> <a id="btn-pull" href="https://github.com/tjmartin66x-tech/pulse-campaign-tracker/actions/workflows/rebake.yml" target="_blank" rel="noopener" title="On-demand Instantly pull: opens GitHub Actions — press 'Run workflow' there (needs repo access). The rebake pulls live data and redeploys in ~2-3 min; this page's Refresh button turns amber when the new build is live. If nothing changed upstream, no new build is produced." style="margin-left:4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#047857;color:#fff;border-radius:6px;padding:3px 9px;text-decoration:none">&#x26a1; Pull live</a></h1>
 <div id="render-trace" style="font-size:11px;color:#b91c1c;margin-top:4px;font-family:ui-monospace,monospace">⚠ render-trace: JS did not run (cached?). Hard-refresh (Ctrl+F5) to fix.</div>
   <div class="header-meta">
     <span>Source · live Instantly pull</span>
@@ -810,23 +810,34 @@ window.addEventListener("error", function(e){
 });
 </script>
 <script>
-/* Auto-freshness: silently reload to the newest deployed build if this copy is stale. */
+/* Auto-freshness: on load, silently reload to the newest deployed build if this copy is
+   stale. After that, keep polling (and re-check when the tab regains focus); when a newer
+   build deploys mid-session — e.g. after an on-demand "Pull live" rebake — light up the
+   Refresh button instead of yanking the page away under the user's filters. */
 (function () {
-  try {
-    var baked = (typeof DATA !== "undefined" && DATA.meta && DATA.meta.last_refresh) || "";
+  var baked = (typeof DATA !== "undefined" && DATA.meta && DATA.meta.last_refresh) || "";
+  function check(initial) {
     fetch("version.txt?t=" + Date.now(), { cache: "no-store" })
       .then(function (r) { return r.ok ? r.text() : null; })
       .then(function (v) {
-        if (!v) return;
-        v = v.trim();
+        v = (v || "").trim();
+        if (!v || v === baked) return;
         var p = new URLSearchParams(location.search);
-        if (v && v !== baked && p.get("_v") !== v) {   // newer build exists and we haven't already retried
+        if (initial && p.get("_v") !== v) {            // newer build exists and we haven't already retried
           p.set("_v", v);
           location.replace(location.pathname + "?" + p.toString());
+        } else if (!initial) {
+          var b = document.getElementById("btn-refresh");
+          if (b && !b.disabled) { b.innerHTML = "&#x21bb; New build — Refresh"; b.style.background = "#d97706"; }
         }
       })
       .catch(function () {});
-  } catch (e) {}
+  }
+  try { check(true); } catch (e) {}
+  setInterval(function () { try { check(false); } catch (e) {} }, 75000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { try { check(false); } catch (e) {} }
+  });
 })();
 </script>
 </body>
