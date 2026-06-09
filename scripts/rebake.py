@@ -424,7 +424,8 @@ def main():
     camps_unchanged = json.dumps(d.get("campaigns", []), sort_keys=True, ensure_ascii=False) == prev_campaigns
     if (leads_unchanged and holds_unchanged and camps_unchanged
             and d["performance"]["totals"] == prev_perf["totals"]
-            and d["performance"]["rates"] == prev_perf["rates"]):
+            and d["performance"]["rates"] == prev_perf["rates"]
+            and d["performance"]["per_campaign"] == prev_perf.get("per_campaign")):
         print("NO_CHANGE")
         sys.exit(0)
 
