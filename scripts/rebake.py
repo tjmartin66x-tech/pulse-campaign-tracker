@@ -33,6 +33,15 @@ BASE = "https://api.instantly.ai/api/v2"
 HTML_PATH = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "index.html"))
 VERSION_PATH = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "version.txt"))
 VALID_TEMPLATES = {"A_SUBSCRIPTION", "B_HEALTHCARE", "D_BANKING", "E_INSURANCE"}
+# Canonical Holds & Flags — the auto-rebake enforces exactly these every run, so
+# retired flags (INTERLEAVED, QUARANTINED, E2-E5, NEW LOAD) can't drift back in.
+CANONICAL_HOLDS = [
+    {"tag": "GATE", "text": "No campaign activates without explicit Troy 'Y' (Sprint v2.0)"},
+    {"tag": "COLD", "text": "Stream-G runtime claims FALSE in cold copy — NDA-anonymous follow-up only"},
+    {"tag": "ROT", "text": "Klarna excluded from PAYOUT; CFPB Circular 2023-03, EO 14110, SB 1047, Colorado SB 24-205, Click-to-Cancel all rotted"},
+    {"tag": "WARMUP", "text": "Domain A warmup must hit ≥95% inbox placement before activation"},
+    {"tag": "HOLD", "text": "PlainsCapital Bank — source CSV had blank target_dm + tier. Apollo surfaced Walter Cl***e (CFO). Needs Troy tier assignment for next-pass load."},
+]
 DIM_FIELDS = [  # (signal_activity key, lead-record field)
     ("signal_band", "signal_band"), ("target_dm", "target_dm"),
     ("template", "template"), ("tier", "tier"), ("p_class", "p_class"),
@@ -297,6 +306,8 @@ def main():
     prev_total = d["summary"]["total_leads"]
     prev_perf = json.loads(json.dumps(d["performance"]))
     prev_leads = json.dumps(d["leads"], sort_keys=True, ensure_ascii=False)
+    prev_holds = json.dumps(d.get("doctrine", {}).get("holds", []), ensure_ascii=False)
+    d.setdefault("doctrine", {})["holds"] = [dict(h) for h in CANONICAL_HOLDS]  # enforce canonical holds
     campaigns = d["campaigns"]
     id_to_name = {c["id"]: c["name"] for c in campaigns}
     fp_ids = set(id_to_name)
@@ -335,9 +346,10 @@ def main():
         print("VALIDATION_FAILED: " + "; ".join(fails))
         sys.exit(2)
 
-    # ---- change detection (count + performance + per-lead roster content)
+    # ---- change detection (count + performance + per-lead roster content + holds)
     leads_unchanged = json.dumps(d["leads"], sort_keys=True, ensure_ascii=False) == prev_leads
-    if (leads_unchanged and d["performance"]["totals"] == prev_perf["totals"]
+    holds_unchanged = json.dumps(d["doctrine"]["holds"], ensure_ascii=False) == prev_holds
+    if (leads_unchanged and holds_unchanged and d["performance"]["totals"] == prev_perf["totals"]
             and d["performance"]["rates"] == prev_perf["rates"]):
         print("NO_CHANGE")
         sys.exit(0)
