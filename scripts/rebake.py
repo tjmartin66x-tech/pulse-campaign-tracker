@@ -259,22 +259,28 @@ def discover_campaigns(d, campaigns_list, analytics):
 def update_performance(perf, analytics, campaigns):
     by_name = {a["campaign_name"]: a for a in analytics}
     pc = perf["per_campaign"]
-    # ensure a row exists for every campaign card (new campaigns self-heal)
+    # ensure a row exists for every campaign card, and keep status/sender synced to the
+    # live campaign list (authoritative) — so a draft->active flip shows in the Per Campaign
+    # table immediately, even before the campaign has any sends to appear in analytics.
     for c in campaigns:
-        pc.setdefault(c["name"], {"status": c.get("status", 0), "sender": c.get("sender", ""),
+        row = pc.setdefault(c["name"], {"status": c.get("status", 0), "sender": c.get("sender", ""),
                                   "leads_count": 0, "sent": 0, "completed": 0, "opens": 0,
                                   "opens_unique": 0, "replies": 0, "replies_unique": 0,
                                   "clicks": 0, "bounces": 0, "unsubs": 0})
+        row["status"] = c.get("status", row.get("status", 0))
+        if c.get("sender") and not row.get("sender"):
+            row["sender"] = c.get("sender")
     for name, row in pc.items():
         a = by_name.get(name)
         if not a:
             continue
-        row.update(leads_count=a.get("leads_count", row.get("leads_count", 0)),
-                   sent=a.get("emails_sent_count", 0), opens=a.get("open_count", 0),
+        # send metrics come from analytics; status stays from the live card above,
+        # leads_count is set authoritatively from the roster (see sync_campaign_leadcounts).
+        row.update(sent=a.get("emails_sent_count", 0), opens=a.get("open_count", 0),
                    opens_unique=a.get("open_count_unique", 0), replies=a.get("reply_count", 0),
                    replies_unique=a.get("reply_count_unique", 0), clicks=a.get("link_click_count", 0),
                    bounces=a.get("bounced_count", 0), unsubs=a.get("unsubscribed_count", 0),
-                   completed=a.get("completed_count", 0), status=a.get("campaign_status", row.get("status", 0)))
+                   completed=a.get("completed_count", 0))
     tot = {k: 0 for k in ("sent", "opens", "opens_unique", "clicks", "replies",
                           "replies_unique", "bounces", "unsubs", "completed", "leads")}
     for row in perf["per_campaign"].values():
@@ -287,6 +293,15 @@ def update_performance(perf, analytics, campaigns):
                      "reply_rate": round(tot["replies"] / s * 100, 2),
                      "reply_rate_unique": round(tot["replies_unique"] / s * 100, 2),
                      "bounce_rate": round(tot["bounces"] / s * 100, 2)}
+
+def sync_campaign_leadcounts(perf, roster):
+    """Per-campaign lead counts come from the reconciled roster (authoritative and never
+    lags), not analytics' delayed count — so a freshly-activated campaign shows its real
+    inventory immediately instead of a stale 0. Keeps the totals leads figure in step."""
+    counts = Counter(l["campaign_name"] for l in roster)
+    for name, row in perf["per_campaign"].items():
+        row["leads_count"] = counts.get(name, 0)
+    perf.setdefault("totals", {})["leads"] = sum(counts.values())
 
 def validate(d, prev_total):
     """Return list of failure strings; empty == OK."""
@@ -392,6 +407,7 @@ def main():
                           ll.get("email_reply_count", 0) or 0, ll.get("email_click_count", 0) or 0))
     d["leads"] = roster
     recompute_summary(d["summary"], roster)
+    sync_campaign_leadcounts(d["performance"], roster)   # per-campaign counts from roster, not lagging analytics
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     rebuild_signal_activity(d["signal_activity"], live_rows, ts)
