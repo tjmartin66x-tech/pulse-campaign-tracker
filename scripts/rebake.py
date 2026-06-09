@@ -74,6 +74,26 @@ def fetch_analytics():
     a = _api("/campaigns/analytics")           # GET
     return a if isinstance(a, list) else []
 
+def fetch_campaigns():
+    """All campaigns (incl. empty drafts), so newly-created campaigns are seen
+    even before they have leads. Defensive: returns [] if the endpoint errors."""
+    out, cursor = [], None
+    try:
+        while True:
+            params = {"limit": 100}
+            if cursor:
+                params["starting_after"] = cursor
+            page = _api("/campaigns", params)
+            items = page.get("items", []) if isinstance(page, dict) else (page or [])
+            out.extend(items)
+            cursor = (page.get("next_starting_after")
+                      or (page.get("pagination") or {}).get("next_starting_after")) if isinstance(page, dict) else None
+            if not cursor or not items:
+                break
+    except Exception as e:
+        print(f"WARN fetch_campaigns failed ({e}); falling back to analytics discovery", file=sys.stderr)
+    return out
+
 def fetch_all_leads():
     """Page through every lead in the workspace. /leads/list is a POST in v2."""
     out, cursor = [], None
@@ -204,22 +224,37 @@ def rebuild_signal_activity(sa, live_rows, ts):
 
 STATUS_MAP = {0: "Draft", 1: "Active", 2: "Paused", 3: "Completed", 4: "Stopped"}
 
-def discover_campaigns(d, analytics):
-    """Add any FP_S1 campaign that exists in Instantly but isn't tracked yet, so
-    newly-loaded campaigns appear on the dashboard automatically."""
-    have = {c["name"] for c in d["campaigns"]} | {c["id"] for c in d["campaigns"]}
+def discover_campaigns(d, campaigns_list, analytics):
+    """Sync the tracked campaign cards with Instantly: add any new FP_S1 campaign
+    (including empty drafts, from the campaigns endpoint) and refresh status on
+    existing cards. Falls back to analytics rows if the campaigns list is empty."""
+    by_id = {c["id"]: c for c in d["campaigns"]}
+    by_name = {c["name"]: c for c in d["campaigns"]}
+    # unified source rows: (name, id, status, sender) — full list first, analytics as fallback
+    rows, seen = [], set()
+    for c in (campaigns_list or []):
+        rows.append((c.get("name", ""), c.get("id"), c.get("status", 0), (c.get("email_list") or [""])[0]))
+        seen.add(c.get("id"))
     for a in analytics:
-        name, cid = a.get("campaign_name", ""), a.get("campaign_id")
-        if not name.startswith("FP_S1_") or name in have or cid in have:
+        if a.get("campaign_id") not in seen:
+            rows.append((a.get("campaign_name", ""), a.get("campaign_id"), a.get("campaign_status", 1), ""))
+    for name, cid, st, sender in rows:
+        if not name.startswith("FP_S1_"):
             continue
-        st = a.get("campaign_status", 1)
-        band = "C8" if "C8" in name else "T1" if "T1" in name else "T2" if "T2" in name else ""
-        d["campaigns"].append({
-            "name": name, "id": cid, "status": st,
-            "status_label": STATUS_MAP.get(st, "Unknown"), "band": band,
-            "sender": "", "expected": a.get("leads_count", 0), "primary": st == 1,
-        })
-        have |= {name, cid}
+        card = by_id.get(cid) or by_name.get(name)
+        if card:                                   # refresh status of an existing card
+            card["status"] = st
+            card["status_label"] = STATUS_MAP.get(st, card.get("status_label", "Unknown"))
+            if sender and not card.get("sender"):
+                card["sender"] = sender
+        else:                                      # add a newly-created campaign
+            band = "C8" if "C8" in name else "T1" if "T1" in name else "T2" if "T2" in name else ""
+            card = {"name": name, "id": cid, "status": st,
+                    "status_label": STATUS_MAP.get(st, "Unknown"), "band": band,
+                    "sender": sender or "", "expected": 0, "primary": st == 1}
+            d["campaigns"].append(card)
+            by_id[cid] = card
+            by_name[name] = card
 
 def update_performance(perf, analytics, campaigns):
     by_name = {a["campaign_name"]: a for a in analytics}
@@ -326,10 +361,11 @@ def main():
     prev_perf = json.loads(json.dumps(d["performance"]))
     prev_leads = json.dumps(d["leads"], sort_keys=True, ensure_ascii=False)
     prev_holds = json.dumps(d.get("doctrine", {}).get("holds", []), ensure_ascii=False)
+    prev_campaigns = json.dumps(d.get("campaigns", []), sort_keys=True, ensure_ascii=False)
     d.setdefault("doctrine", {})["holds"] = [dict(h) for h in CANONICAL_HOLDS]  # enforce canonical holds
     # ---- performance + auto-discover any new FP_S1 campaigns from Instantly
     analytics = fetch_analytics()
-    discover_campaigns(d, analytics)
+    discover_campaigns(d, fetch_campaigns(), analytics)
     campaigns = d["campaigns"]
     id_to_name = {c["id"]: c["name"] for c in campaigns}
     fp_ids = set(id_to_name)
@@ -369,7 +405,9 @@ def main():
     # ---- change detection (count + performance + per-lead roster content + holds)
     leads_unchanged = json.dumps(d["leads"], sort_keys=True, ensure_ascii=False) == prev_leads
     holds_unchanged = json.dumps(d["doctrine"]["holds"], ensure_ascii=False) == prev_holds
-    if (leads_unchanged and holds_unchanged and d["performance"]["totals"] == prev_perf["totals"]
+    camps_unchanged = json.dumps(d.get("campaigns", []), sort_keys=True, ensure_ascii=False) == prev_campaigns
+    if (leads_unchanged and holds_unchanged and camps_unchanged
+            and d["performance"]["totals"] == prev_perf["totals"]
             and d["performance"]["rates"] == prev_perf["rates"]):
         print("NO_CHANGE")
         sys.exit(0)
