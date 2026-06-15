@@ -224,6 +224,22 @@ def rebuild_signal_activity(sa, live_rows, ts):
 
 STATUS_MAP = {0: "Draft", 1: "Active", 2: "Paused", 3: "Completed", 4: "Stopped"}
 
+# One concise thesis per lane (keyed by the prefix after FP_S1_), stamped onto every
+# campaign card each rebake so each box states what the lane is testing. Grounded in the
+# lane's actual cold-copy hook + target persona/segment. Edit text here; it self-applies.
+LANE_THESES = {
+    "PAY":   "Execution-integrity gate at the payout commit — CFO/Risk where AI now moves the money (subscription · banking · healthcare).",
+    "REF":   "The same gate at the refund/credit commit — Controllers at subscription businesses issuing AI-driven refunds.",
+    "EAX":   "The funding commit as AI scales — bank & insurer CFOs on application-to-funding.",
+    "MA":    "M&A-trigger lane — payout-commit integrity to bank CFO/Risk during M&A events; tests M&A copy vs generic.",
+    "MRM":   "Model-risk angle — the gap OCC 2026-13 leaves on agentic AI, pitched to bank/insurer CFOs.",
+    "NAIC":  "Insurance-reg hook — the NAIC AI exam-tool pilot, to insurer CFOs on claim-to-payout.",
+    "FINRA": "Broker-dealer hook — FINRA's four questions on AI agents, to Chief Compliance Officers.",
+}
+
+def _lane(name):
+    return name.replace("FP_S1_", "").split("_")[0]
+
 def discover_campaigns(d, campaigns_list, analytics):
     """Sync the tracked campaign cards with Instantly: add any new FP_S1 campaign
     (including empty drafts, from the campaigns endpoint) and refresh status on
@@ -255,6 +271,9 @@ def discover_campaigns(d, campaigns_list, analytics):
             d["campaigns"].append(card)
             by_id[cid] = card
             by_name[name] = card
+        thesis = LANE_THESES.get(_lane(name))      # stamp the lane thesis onto the card
+        if thesis:
+            card["thesis"] = thesis
 
 def update_performance(perf, analytics, campaigns):
     by_name = {a["campaign_name"]: a for a in analytics}
