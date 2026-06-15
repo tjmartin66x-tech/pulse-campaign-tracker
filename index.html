@@ -418,7 +418,12 @@ function campaignCardHTML(c) {
 }
 function renderCampaignCards(container) {
   container.innerHTML = "";
-  DATA.campaigns.forEach(c => {
+  // Active campaigns first, then the rest — each group alphabetical by name.
+  const ordered = DATA.campaigns.slice().sort((a, b) => {
+    const aA = a.status_label === "Active" ? 0 : 1, bA = b.status_label === "Active" ? 0 : 1;
+    return aA - bA || (a.name || "").localeCompare(b.name || "");
+  });
+  ordered.forEach(c => {
     const { html, active } = campaignCardHTML(c);
     const div = document.createElement("div");
     div.className = "camp" + (active ? " primary" : "") + (c.empty ? " empty" : "");
