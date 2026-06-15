@@ -14,7 +14,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>FP_S1 Campaign Tracker · 509 leads</title>
+<title>FP_S1 Campaign Tracker · 796 leads</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
 <style>
 :root { color-scheme: light;
@@ -393,6 +393,7 @@ document.getElementById("kpi-t1").textContent = s.by_tier["TIER 1"] || 0;
 document.getElementById("kpi-t2").textContent = s.by_tier["TIER 2"] || 0;
 document.getElementById("kpi-high").textContent = s.by_band["HIGH"] || 0;
 document.getElementById("kpi-low").textContent = s.by_band["LOW"] || 0;
+document.title = "FP_S1 Campaign Tracker · " + (s.total_leads || 0) + " leads";  // keep the browser tab on the live count
 
 // Campaign cards — render from LIVE status + roster-synced lead counts. The baked
 // `primary`/`expected` fields lag (they freeze at a campaign's draft-time state), which

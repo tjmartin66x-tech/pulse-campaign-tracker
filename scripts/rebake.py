@@ -342,6 +342,8 @@ def write_html(lines, d, ts):
     hi = _find(lines, lambda l: '<span class="live-tag">' in l, "header live-tag")
     lines[hi] = re.sub(r'(fresh-tag">)\d+ leads loaded(<)', rf"\g<1>{n} leads loaded\2", lines[hi])
     lines[hi] = re.sub(r'(<span class="live-tag">)[^<]*(</span>)', rf"\g<1>{ts}\2", lines[hi])
+    ti = _find(lines, lambda l: "<title>" in l, "title")          # browser-tab lead count
+    lines[ti] = re.sub(r"· [\d,]+ leads</title>", f"· {n} leads</title>", lines[ti])
     fi = _find(lines, lambda l: re.search(r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", l), "footer Generated")
     lines[fi] = re.sub(r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", f"Generated {ts}", lines[fi])
     open(HTML_PATH, "w").writelines(lines)
