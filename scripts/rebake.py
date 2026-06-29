@@ -235,6 +235,7 @@ LANE_THESES = {
     "MRM":   "Model-risk angle — the gap OCC 2026-13 leaves on agentic AI, pitched to bank/insurer CFOs.",
     "NAIC":  "Insurance-reg hook — the NAIC AI exam-tool pilot, to insurer CFOs on claim-to-payout.",
     "FINRA": "Broker-dealer hook — FINRA's four questions on AI agents, to Chief Compliance Officers.",
+    "AISET": "AI-signal-triggered insurance outreach — health, P&C, and life CFOs/Risk where state-exam AI pilots surface a live compliance gap; tests pilot vs non-pilot copy.",
 }
 
 def _lane(name):

@@ -419,8 +419,11 @@ function campaignCardHTML(c) {
 }
 function renderCampaignCards(container) {
   container.innerHTML = "";
-  // Active campaigns first, then the rest — each group alphabetical by name.
+  // AISET first, then active campaigns, then the rest — each group alphabetical by name.
   const ordered = DATA.campaigns.slice().sort((a, b) => {
+    const aAiset = (a.name || "").includes("_AISET_") ? 0 : 1;
+    const bAiset = (b.name || "").includes("_AISET_") ? 0 : 1;
+    if (aAiset !== bAiset) return aAiset - bAiset;
     const aA = a.status_label === "Active" ? 0 : 1, bA = b.status_label === "Active" ? 0 : 1;
     return aA - bA || (a.name || "").localeCompare(b.name || "");
   });
@@ -751,9 +754,11 @@ DATA.doctrine.key_files.forEach(f => {
   })();
   const rowsTbody = document.getElementById("perf-rows");
   if (rowsTbody && p.per_campaign) {
-    // Active campaigns first, then ascending by Completion % (no-data rows last).
+    // AISET first, then active campaigns, then ascending by Completion % (no-data rows last).
     const compOf = (k) => { const v = CAMP_PROGRESS[k]; return (v == null) ? Infinity : v; };
     const entries = Object.entries(p.per_campaign).sort((a, b) => {
+      const aAiset = a[0].includes("_AISET_") ? 0 : 1, bAiset = b[0].includes("_AISET_") ? 0 : 1;
+      if (aAiset !== bAiset) return aAiset - bAiset;
       const aA = a[1].status === 1 ? 0 : 1, bA = b[1].status === 1 ? 0 : 1;
       return aA - bA || compOf(a[0]) - compOf(b[0]);
     });
